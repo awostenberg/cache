@@ -62,8 +62,6 @@ module Realistic =
         let slot = v,ref 0L
         cache.Add(k,slot)
         v
-      member this.dumpCache() =
-        cache |> Seq.iter (fun kvp -> printfn "%A %A %A" kvp.Key (fst kvp.Value) (snd kvp.Value))
 
   module Policy =
     // some sample policies for vacating cache items
