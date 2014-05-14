@@ -10,7 +10,7 @@ module Examples =
     printfn "computing square of %d" n
     n*n
 
-  let sqLru = Cache.Realistic.memoizeWithNWayCache square {nshelves=1;nbooks=10} Policy.lru 
+  let sqLru = memoizeWithNWayCache square {nshelves=1;nbooks=10} Policy.lru 
 
   let x = [1..10] |> List.map sqLru
   let x1 = [1..10] |> List.map sqLru
@@ -18,7 +18,7 @@ module Examples =
   let x3 = sqLru 11     // should use cache
   let x4 = sqLru 1      // should recalculate and kick out 2
 
-  let sqMru = cacheFor Policy.mru square
+  let sqMru = memoizeWithNWayCache square {nshelves=1;nbooks=10} Policy.mru
   let x' = [1..10] |> List.map sqMru   // load up cache
   let x1' = [1..10] |> List.map sqMru // from cache
   let x2' = sqMru 11      // should cache 11 and vacate the most recently used -- #10
@@ -43,7 +43,7 @@ module Examples =
   let samples = [1..10] |> List.map boulder
 
 
-  let renderTileMem = cacheFor pig renderTile
+  let renderTileMem = memoizeWithNWayCache renderTile {nshelves=1;nbooks=10} pig
 
   let g = samples |> List.map renderTileMem     // should calculate
   let g1 = samples |> List.map renderTileMem    // should hit cache
