@@ -14,7 +14,7 @@ type ICache<'k,'v when 'k : equality>() =
 
 module Naive =
   /// A naive 1-level cache that knows no bounds.
-  /// Offered more for a warmup and tutorial exercise to iteratively exlpore the design space than customer-facing
+  /// Offered more for a warmup and tutorial exercise to iteratively explore the design space than customer-facing
   type UBCache<'k,'v when 'k : equality>() =
       inherit ICache<'k,'v>() 
       let cache = new System.Collections.Generic.Dictionary<'k,'v>()
@@ -74,14 +74,14 @@ module Realistic =
   type NWayCache<'k,'v when 'k : equality>(nshelves,initShelf) =
       inherit ICache<'k, 'v>()
       let shelves: ICache<_, _>[] = Array.init nshelves initShelf
-      let bucketFor k = shelves.[k.GetHashCode()%nshelves]
-      override this.TryGetValue k = (bucketFor k).TryGetValue k
-      override this.Add k v = (bucketFor k).Add k v
+      let shelfFor k = shelves.[k.GetHashCode()%nshelves]
+      override this.TryGetValue k = (shelfFor k).TryGetValue k
+      override this.Add k v = (shelfFor k).Add k v
   
   /// The NWayCache has pluggable types of shelves via it's initShelves initializer lambda which has a somewhat foreboding signature.
   /// Therefore provide a convenience function to construct an NWayCache of n shelves of type N1PCache waith capacity nBooks
   type CacheSpecification<'k,'v> = {nshelves:int;nbooks:int;policy:('k*'v*int64->int64)}
-  let memoizeWithNWayCache fn size = (new NWayCache<'k,'v>(size.nshelves, fun x -> upcast new N1PCache<_,_>(size.nbooks, size.policy))).memoize fn
+  let memoizeWithNWayCache fn spec = (new NWayCache<'k,'v>(spec.nshelves, fun x -> upcast new N1PCache<_,_>(spec.nbooks, spec.policy))).memoize fn
 
 
   /// 
