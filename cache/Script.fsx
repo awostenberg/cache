@@ -10,15 +10,14 @@ module Examples =
     printfn "computing square of %d" n
     n*n
 
-  let sqLru = memoizeWithNWayCache square {nshelves=1;nbooks=10} Policy.lru 
-
-  let x = [1..10] |> List.map sqLru
+  let sqLru = memoizeWithNWayCache square {nshelves=1;nbooks=10;policy=Policy.lru} 
+    
   let x1 = [1..10] |> List.map sqLru
   let x2 = sqLru 11     // will compute square of 11 and should vacate cached 1
   let x3 = sqLru 11     // should use cache
   let x4 = sqLru 1      // should recalculate and kick out 2
 
-  let sqMru = memoizeWithNWayCache square {nshelves=1;nbooks=10} Policy.mru
+  let sqMru = memoizeWithNWayCache square {nshelves=1;nbooks=10;policy=Policy.mru}
   let x' = [1..10] |> List.map sqMru   // load up cache
   let x1' = [1..10] |> List.map sqMru // from cache
   let x2' = sqMru 11      // should cache 11 and vacate the most recently used -- #10
@@ -42,8 +41,7 @@ module Examples =
   let boulder zoom = {lat=40.;lon= -105.;zoom=zoom}
   let samples = [1..10] |> List.map boulder
 
-
-  let renderTileMem = memoizeWithNWayCache renderTile {nshelves=1;nbooks=10} pig
+  let renderTileMem = memoizeWithNWayCache renderTile {nshelves=1;nbooks=10;policy=pig}  
 
   let g = samples |> List.map renderTileMem     // should calculate
   let g1 = samples |> List.map renderTileMem    // should hit cache

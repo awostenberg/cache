@@ -27,9 +27,9 @@ module Naive =
   /// A slightly less naive 1-level cache that knows bounds and has a hardwired lru policy
   type N1Cache<'k,'v when 'k : equality>(nBooks) =
       inherit ICache<'k,'v>() 
-      let cache = new System.Collections.Generic.Dictionary<'k,'v*uint64 ref>()
+      let cache = new System.Collections.Generic.Dictionary<'k,'v*int64 ref>()
       override this.TryGetValue k = 
-        cache.Values |> Seq.iter (fun (v,age) -> age := !age + 1UL )
+        cache.Values |> Seq.iter (fun (v,age) -> age := !age + 1L )
         match cache.TryGetValue k with
         |true,(v,_) -> Some v
         |false,_ -> None
@@ -37,7 +37,7 @@ module Naive =
         if cache.Count >= nBooks then
           let vacate = cache |> Seq.maxBy (fun kvp -> snd kvp.Value)      // lru policy based on age
           cache.Remove vacate.Key |> ignore
-        let slot = v,ref 0UL
+        let slot = v,ref 0L
         cache.Add(k,slot)
         v
 
@@ -64,24 +64,24 @@ module Realistic =
 
   module Policy =
     // some sample policies for vacating cache items
-    let lru (k,v,age) = age             // vacate oldest
-    let mru (k,v,age:int64) =  - age    // vacate youngest
+    let inline lru (k,v,age) = age             // vacate oldest
+    let inline mru (k,v,age) =  - age          // vacate youngest
 
-    let big (k,v:string,age) = v.Length   // vacate biggest (for a hypothetical cache storing string values)
+    let inline big (k,v:string,age) = v.Length // vacate biggest (for a hypothetical cache storing string values)
 
   /// Final N-Way cache capable of holding nshelves*nbooks items. 
-  /// Items are internally arranged in a level-N1PCache1 cache of nShelves each holding up to nBook items
-  type NWayCache<'k,'v when 'k : equality>(nshelves,initShelves) =
+  /// Items are internally arranged in an N1PCache of an array of n shelves initialized by initShelf
+  type NWayCache<'k,'v when 'k : equality>(nshelves,initShelf) =
       inherit ICache<'k, 'v>()
-      let shelves: ICache<_, _>[] = Array.init nshelves initShelves
+      let shelves: ICache<_, _>[] = Array.init nshelves initShelf
       let bucketFor k = shelves.[k.GetHashCode()%nshelves]
       override this.TryGetValue k = (bucketFor k).TryGetValue k
       override this.Add k v = (bucketFor k).Add k v
   
-  /// The NWayCache has pluggable types of shelves via it's initShelves initializer lambda with a somewhat foreboding signature.
-  /// Therefore provide a convenience function to construct an NWayCache of <nshelves> shelves of type N1PCache waith capacity nBooks
-  type SizeMatters = {nshelves:int;nbooks:int}
-  let memoizeWithNWayCache fn size policy = (new NWayCache<'k,'v>(size.nshelves, fun x -> upcast new N1PCache<_,_>(size.nbooks, policy))).memoize fn
+  /// The NWayCache has pluggable types of shelves via it's initShelves initializer lambda which has a somewhat foreboding signature.
+  /// Therefore provide a convenience function to construct an NWayCache of n shelves of type N1PCache waith capacity nBooks
+  type CacheSpecification<'k,'v> = {nshelves:int;nbooks:int;policy:('k*'v*int64->int64)}
+  let memoizeWithNWayCache fn size = (new NWayCache<'k,'v>(size.nshelves, fun x -> upcast new N1PCache<_,_>(size.nbooks, size.policy))).memoize fn
 
 
   /// 
