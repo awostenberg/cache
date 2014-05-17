@@ -17,7 +17,7 @@ module Naive =
   /// Offered more for a warmup and tutorial exercise to iteratively explore the design space than customer-facing
   type UBCache<'k,'v when 'k : equality>() =
       inherit ICache<'k,'v>() 
-      let cache = new System.Collections.Generic.Dictionary<'k,'v>()
+      let cache = new System.Collections.Generic.Dictionary<_,_>()
       override this.TryGetValue k = 
         match cache.TryGetValue k with
         | true,v -> Some v
@@ -37,12 +37,11 @@ module Naive =
         if cache.Count >= nBooks then
           let vacate = cache |> Seq.maxBy (fun kvp -> snd kvp.Value)      // lru policy based on age
           cache.Remove vacate.Key |> ignore
-        let slot = v,ref 0L
-        cache.Add(k,slot)
+        cache.Add(k,(v,ref 0L))
         v
 
 module Realistic =
-  /// Cache with pluggable policy to decide which item to vacate when the cache is full
+  /// Cache with pluggable policy proscribing which item to vacate when the cache is full
   /// the vacatePolicy computes the total ordering on cache items from the tuple (key,value,age) 
   /// such that the maximal value identifies the item to vacate next
   type N1PCache<'k,'v when 'k : equality>(nbooks,vacatePolicy:'k*'v*int64->int64) =
@@ -55,11 +54,11 @@ module Realistic =
         |false,_ -> None
       override this.Add k v =
         if cache.Count >= nbooks then
-          let tmp = cache |> Seq.map (fun kvp -> (kvp.Key,fst kvp.Value,!(snd kvp.Value)))
-          let (vacate,_,_)= tmp |> Seq.maxBy vacatePolicy
+          let (vacate,_,_)= cache 
+                            |> Seq.map (fun kvp -> (kvp.Key,fst kvp.Value,!(snd kvp.Value))) 
+                            |> Seq.maxBy vacatePolicy
           cache.Remove vacate |> ignore
-        let slot = v,ref 0L
-        cache.Add(k,slot)
+        cache.Add(k,(v,ref 0L))
         v
 
   module Policy =
@@ -70,7 +69,7 @@ module Realistic =
     let inline big (k,v:string,age) = v.Length // vacate biggest (for a hypothetical cache storing string values)
 
   /// Final N-Way cache capable of holding nshelves*nbooks items. 
-  /// Items are internally arranged in an N1PCache of an array of n shelves initialized by initShelf
+  /// Items are arrayed in shelves initialized by initShelf
   type NWayCache<'k,'v when 'k : equality>(nshelves,initShelf) =
       inherit ICache<'k, 'v>()
       let shelves: ICache<_, _>[] = Array.init nshelves initShelf
